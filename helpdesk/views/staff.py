@@ -38,10 +38,13 @@ try:
 except ImportError:
     from datetime import datetime as timezone
 
-from helpdesk.forms import TicketForm, UserSettingsForm, EmailIgnoreForm, EditTicketForm, TicketCCForm, EditFollowUpForm, TicketDependencyForm
+from helpdesk.forms import TicketForm, UserSettingsForm, EmailIgnoreForm, EditTicketForm, TicketCCForm, EditFollowUpForm, TicketDependencyForm, PgpPassphraseForm
 from helpdesk.lib import send_templated_mail, query_to_dict, apply_query, safe_template_context
 from helpdesk.models import Ticket, Queue, FollowUp, TicketChange, PreSetReply, Attachment, SavedSearch, IgnoreEmail, TicketCC, TicketDependency
 from helpdesk import settings as helpdesk_settings
+
+if helpdesk_settings.HELPDESK_USE_GNUPG:
+    from helpdesk.lib import sign_message_with_default_key
 
 if helpdesk_settings.HELPDESK_ALLOW_NON_STAFF_TICKET_UPDATE:
     # treat 'normal' users like 'staff'
@@ -79,6 +82,27 @@ def _has_access_to_queue(user, queue):
         return True
     else:
         return user.has_perm(queue.permission_name)
+    
+    
+def get_passphrase(request):
+    """ A quick form to ask for PGP passphrase and verify it is correct """
+    if request.method == 'GET':
+        form = PgpPassphraseForm()
+
+        return render_to_response('helpdesk/registration/pgp.html',
+            RequestContext(request, {
+                'form': form,
+        }))
+    if request.method == 'POST':
+        form = PgpPassphraseForm(request.POST)
+        if form.is_valid():
+            # add validated passphrase to the current session
+            request.session['pgp_passphrase'] = form.cleaned_data['pgp_passphrase']
+            if request.POST.get('next'):
+                return HttpResponseRedirect(request.POST.get('next'))
+            else:
+                return HttpResponseRedirect(reverse('helpdesk_dashboard'))
+
 
 
 def dashboard(request):
@@ -243,6 +267,9 @@ def view_ticket(request, ticket_id):
     ticket = get_object_or_404(Ticket, id=ticket_id)
     if not _has_access_to_queue(request.user, ticket.queue):
         raise PermissionDenied()
+    
+    if helpdesk_settings.HELPDESK_USE_GNUPG and helpdesk_settings.HELPDESK_ALWAYS_SIGN_FOLLOWUPS and 'pgp_passphrase' not in request.session:
+        return HttpResponseRedirect('%s?next=%s' % (reverse('helpdesk_get_pgp_passphase'), reverse('helpdesk_view', args=[ticket.id])))
 
     if 'take' in request.GET:
         # Allow the user to assign the ticket to themselves whilst viewing it.
@@ -407,6 +434,8 @@ def update_ticket(request, ticket_id, public=False):
         context = Context(context)
 
     comment = template_func(comment).render(context)
+    if helpdesk_settings.HELPDESK_USE_GNUPG and helpdesk_settings.HELPDESK_ALWAYS_SIGN_FOLLOWUPS:
+        comment = sign_message_with_default_key(comment, request.session['pgp_passphrase'])
 
     if owner is -1 and ticket.assigned_to:
         owner = ticket.assigned_to.id
@@ -1458,6 +1487,7 @@ def date_rel_to_today(today, offset):
 
 def sort_string(begin, end):
     return 'sort=created&date_from=%s&date_to=%s&status=%s&status=%s&status=%s' %(begin, end, Ticket.OPEN_STATUS, Ticket.REOPENED_STATUS, Ticket.RESOLVED_STATUS)
+
 
 
 

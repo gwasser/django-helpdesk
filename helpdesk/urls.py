@@ -144,6 +144,10 @@ urlpatterns = [
     url(r'^ignore/delete/(?P<id>[0-9]+)/$',
         staff.email_ignore_del,
         name='helpdesk_email_ignore_del'),
+    
+    url(r'^get_pgp_passphrase/$',
+        staff.get_passphrase,
+        name='helpdesk_get_pgp_passphase'),
 ]
 
 urlpatterns += [

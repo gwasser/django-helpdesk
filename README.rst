@@ -32,6 +32,7 @@ Dependencies (pre-flight checklist)
 4. `pip install django-bootstrap-form` and add `bootstrapform` to `settings.INSTALLED_APPS`
 5. `pip install django-markdown-deux` and add `markdown_deux` to `settings.INSTALLED_APPS`
 6. `pip install email-reply-parser` to get smart email reply handling
+7. `pip install python-gnupg` to get PGP signed and encrypted emails
 
 **NOTE REGARDING SQLITE AND SEARCHING:**
 If you use sqlite as your database, the search function will not work as
@@ -55,6 +56,15 @@ http://dev.mysql.com/doc/refman/5.1/en/charset-database.html
 If you do NOT do this step, and you only want to use English-language templates,
 you can continue however you will receive a warning when running the 'migrate'
 commands.
+
+**NOTE REGARDING GNUPG:**
+To fully enable this on a server that has only gpg2, you must add the string
+"allow-loopback-pinentry" to your GPG folder's gpg-agent.conf file.
+Internally it calls gpg2 with a "--pinentry-mode=loopback" option.
+For more reading, see:
+https://wiki.archlinux.org/index.php/GnuPG#Unattended_passphrase
+
+Currently we only support gpg2.
 
 Fresh Django Installations
 --------------------------

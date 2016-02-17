@@ -98,6 +98,23 @@ QUEUE_EMAIL_BOX_HOST = getattr(settings, 'QUEUE_EMAIL_BOX_HOST', None)
 QUEUE_EMAIL_BOX_USER = getattr(settings, 'QUEUE_EMAIL_BOX_USER', None)
 QUEUE_EMAIL_BOX_PASSWORD = getattr(settings, 'QUEUE_EMAIL_BOX_PASSWORD', None)
 
+''' PGP encryption and signing options '''
+HELPDESK_GNUPG_HOME = getattr(settings, 'HELPDESK_GNUPG_HOME', None)
+# 8 hex character short key ID, e.g, 1234ABCD ( do not include 0x in front )
+HELPDESK_DEFAULT_SIGNING_KEY_ID = getattr(settings, 'HELPDESK_DEFAULT_SIGNING_KEY_ID', None)
+# if both above defined, we can use PGP properly
+HELPDESK_USE_GNUPG = getattr(settings, 'HELPDESK_USE_GNUPG', HELPDESK_GNUPG_HOME is not None and HELPDESK_DEFAULT_SIGNING_KEY_ID is not None)
+# should we always sign followup emails sent thru helpdesk?
+HELPDESK_ALWAYS_SIGN_FOLLOWUPS = getattr(settings, 'HELPDESK_ALWAYS_SIGN_FOLLOWUPS', False)
+# do we always trust any imported keys?
+HELPDESK_ALWAYS_TRUST_GNUPG_KEYS = getattr(settings, 'HELPDESK_ALWAYS_TRUST_GNUPG_KEYS', False)
+
+if HELPDESK_USE_GNUPG:
+    try:
+        import gnupg
+    except ImportError:
+        raise ImproperlyConfigured("django-helpdesk could not import gnupg")
+
 
 # only allow users to access queues that they are members of?
 HELPDESK_ENABLE_PER_QUEUE_STAFF_PERMISSION = getattr(settings, 'HELPDESK_ENABLE_PER_QUEUE_STAFF_PERMISSION', False)

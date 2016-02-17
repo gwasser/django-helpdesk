@@ -29,6 +29,9 @@ except ImportError:
 from helpdesk.lib import send_templated_mail, safe_template_context
 from helpdesk.models import Ticket, Queue, FollowUp, Attachment, IgnoreEmail, TicketCC, CustomField, TicketCustomFieldValue, TicketDependency
 from helpdesk import settings as helpdesk_settings
+if helpdesk_settings.HELPDESK_USE_GNUPG:
+    import gnupg
+    from helpdesk.lib import get_gpg_instance, sign_message_with_default_key
 
 class CustomFieldMixin(object):
     """
@@ -544,3 +547,22 @@ class TicketDependencyForm(forms.ModelForm):
     class Meta:
         model = TicketDependency
         exclude = ('ticket',)
+        
+        
+# get passphrase and see if we can make a valid signature
+# if not, assume passphrase is wrong
+def validate_pgp_passphrase(value):
+    signed_message = sign_message_with_default_key("Testing message", passphrase=value)
+    gpg = get_gpg_instance()
+    verified = gpg.verify(signed_message)
+    if not verified:
+        raise ValidationError("incorrect PGP key passphrase")
+
+class PgpPassphraseForm(forms.Form):
+    pgp_passphrase = forms.CharField(
+        widget=forms.PasswordInput,
+        label=_('PGP Passphrase'),
+        help_text=_('The passphrase of the default helpdesk PGP key.'),
+        required=True,
+        validators=[validate_pgp_passphrase],
+        )

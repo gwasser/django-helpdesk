@@ -22,6 +22,8 @@ logger = logging.getLogger('helpdesk')
 
 from django.utils.encoding import smart_str
 
+from helpdesk import settings as helpdesk_settings
+
 def send_templated_mail(template_name, email_context, recipients, sender=None, bcc=None, fail_silently=False, files=None):
     """
     send_templated_mail() is a warpper around Django's e-mail routines that
@@ -287,3 +289,23 @@ def text_is_spam(text, request):
         return ak.comment_check(smart_str(text), data=ak_data)
 
     return False
+
+
+if helpdesk_settings.HELPDESK_USE_GNUPG:
+
+    import gnupg
+    
+    def get_gpg_instance():
+        ''' returns a GPG instance with the proper command line options '''
+        return gnupg.GPG(gnupghome=helpdesk_settings.HELPDESK_GNUPG_HOME, options=['--pinentry-mode=loopback','--batch'])
+    
+    
+    def sign_message_with_default_key(message, passphrase):
+        keyid = helpdesk_settings.HELPDESK_DEFAULT_SIGNING_KEY_ID
+        
+        gpg = get_gpg_instance()
+        signed_data = gpg.sign(message, passphrase=passphrase, keyid=keyid)
+        signed_message = str(signed_data)
+        
+        return signed_message
+    
