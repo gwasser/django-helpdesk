@@ -309,9 +309,18 @@ if helpdesk_settings.HELPDESK_USE_GNUPG:
         
         return signed_message
     
-    
     def verify_signed_message(message):
         gpg = get_gpg_instance()
         verified = gpg.verify(message)
         return True if verified else False
+    
+    def signed_message_data(message):
+        gpg = get_gpg_instance()
+        data = gpg.verify(message)
+        decorator = ''
+        if str(data.key_status).find('expire',0) > -1:
+            decorator = ' is EXPIRED'
+        elif str(data.key_status).find('revoked',0) > -1:
+            decorator = ' was REVOKED'
+        return ('Key ID %s <%s>' % (data.key_id, data.username)) + decorator
     

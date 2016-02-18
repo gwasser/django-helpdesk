@@ -87,7 +87,7 @@ function googleTranslateElementInit() {
 {% else %}
     <div class='followup well'>
     <div class='title'>
-        {{ followup.title }} <span class='byline text-info'>{% if followup.user %}by {{ followup.user }}{% endif %} <span title='{{ followup.date|date:"r" }}'>{{ followup.date|naturaltime }}</span>{% if not followup.public %} <span class='private'>({% trans "Private" %})</span>{% endif %}</span><span class='label {% if followup.comment|verify_sig %}label-success'>Signature OK{% else %}label-warning'>Signature Invalid{% endif %}</span>
+        {{ followup.title }} <span class='byline text-info'>{% if followup.user %}by {{ followup.user }}{% endif %} <span title='{{ followup.date|date:"r" }}'>{{ followup.date|naturaltime }}</span>{% if not followup.public %} <span class='private'>({% trans "Private" %})</span>{% endif %}</span>{% if followup.comment|is_signed %}<span data-toggle='tooltip' title="Signed by {{ followup.comment|sig }}"><span class='label {% if followup.comment|verify_sig %}label-success'>Signature OK{% else %}label-warning'>Signature Invalid{% endif %}</span></span>{% endif %}
         {% if helpdesk_settings.HELPDESK_SHOW_EDIT_BUTTON_FOLLOW_UP %}
         {% if followup.user and request.user == followup.user and not followup.ticketchange_set.all %}
         <a href="{% url 'helpdesk_followup_edit' ticket.id followup.id %}" class='followup-edit'><img width="60" height="15" title="Edit" alt="Edit" src="{% static "helpdesk/buttons/edit.png" %}"></a>
