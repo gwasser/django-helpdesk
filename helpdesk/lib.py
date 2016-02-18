@@ -309,3 +309,9 @@ if helpdesk_settings.HELPDESK_USE_GNUPG:
         
         return signed_message
     
+    
+    def verify_signed_message(message):
+        gpg = get_gpg_instance()
+        verified = gpg.verify(message)
+        return True if verified else False
+    

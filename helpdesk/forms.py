@@ -31,7 +31,7 @@ from helpdesk.models import Ticket, Queue, FollowUp, Attachment, IgnoreEmail, Ti
 from helpdesk import settings as helpdesk_settings
 if helpdesk_settings.HELPDESK_USE_GNUPG:
     import gnupg
-    from helpdesk.lib import get_gpg_instance, sign_message_with_default_key
+    from helpdesk.lib import get_gpg_instance, sign_message_with_default_key, verify_signed_message
 
 class CustomFieldMixin(object):
     """
@@ -553,8 +553,7 @@ class TicketDependencyForm(forms.ModelForm):
 # if not, assume passphrase is wrong
 def validate_pgp_passphrase(value):
     signed_message = sign_message_with_default_key("Testing message", passphrase=value)
-    gpg = get_gpg_instance()
-    verified = gpg.verify(signed_message)
+    verified = verify_signed_message(signed_message)
     if not verified:
         raise ValidationError("incorrect PGP key passphrase")
 
