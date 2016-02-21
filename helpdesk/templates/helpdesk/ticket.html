@@ -168,7 +168,12 @@ function googleTranslateElementInit() {
         <input type='hidden' name='public' value='1'>
         {% else %}
         <dt><label for='id_public'>{% trans "Is this update public?" %}</label> <span class='form_optional'>{% trans "(Optional)" %}</span></dt>
-        <dd><input type='checkbox' name='public' value='1' checked='checked' /></dd>
+        <dd><select name='public'>
+            <option value='0'>{% trans "Private" %}</option>
+            <option value='2'>{% trans "Public - Email to Submitter only" %}</option>
+            <option value='3'>{% trans "Public - Email to Copies-To List only" %}</option>
+            <option value='1'>{% trans "Public - Email to all" %}</option>
+        </select></dd>
         <dd class='form_help_text'>{% trans "If this is public, the submitter will be e-mailed your comment or resolution." %}</dd>
         {% endif %}
     </dl>
