@@ -386,6 +386,18 @@ def update_ticket(request, ticket_id, public=False):
     new_status = int(request.POST.get('new_status', ticket.status))
     title = request.POST.get('title', '')
     public = request.POST.get('public', False)
+    email_submitter = False
+    email_copyto = False
+    if public == '1' or public == '2' or public == '3':
+        public = True
+    if public == 0:
+        public = False
+    else:
+        public = True
+        if public == 1 or public == 3:
+            email_all = True
+        if public == 2 or public == 3:
+            email_submitter = True
     owner = int(request.POST.get('owner', -1))
     priority = int(request.POST.get('priority', ticket.priority))
     due_date_year = int(request.POST.get('due_date_year', 0))
@@ -555,30 +567,32 @@ def update_ticket(request, ticket_id, public=False):
 
         template_suffix = 'submitter'
 
-        if ticket.submitter_email:
-            send_templated_mail(
-                template + template_suffix,
-                context,
-                recipients=ticket.submitter_email,
-                sender=ticket.queue.from_address,
-                fail_silently=True,
-                files=files,
-                )
-            messages_sent_to.append(ticket.submitter_email)
-
-        template_suffix = 'cc'
-
-        for cc in ticket.ticketcc_set.all():
-            if cc.email_address not in messages_sent_to:
+        if email_submitter:
+            if ticket.submitter_email:
                 send_templated_mail(
                     template + template_suffix,
                     context,
-                    recipients=cc.email_address,
+                    recipients=ticket.submitter_email,
                     sender=ticket.queue.from_address,
                     fail_silently=True,
                     files=files,
                     )
-                messages_sent_to.append(cc.email_address)
+                messages_sent_to.append(ticket.submitter_email)
+
+        template_suffix = 'cc'
+
+        if email_copyto:
+            for cc in ticket.ticketcc_set.all():
+                if cc.email_address not in messages_sent_to:
+                    send_templated_mail(
+                        template + template_suffix,
+                        context,
+                        recipients=cc.email_address,
+                        sender=ticket.queue.from_address,
+                        fail_silently=True,
+                        files=files,
+                        )
+                    messages_sent_to.append(cc.email_address)
 
     if ticket.assigned_to and request.user != ticket.assigned_to and ticket.assigned_to.email and ticket.assigned_to.email not in messages_sent_to:
         # We only send e-mails to staff members if the ticket is updated by
