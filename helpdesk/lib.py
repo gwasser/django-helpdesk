@@ -24,9 +24,9 @@ from django.utils.encoding import smart_str
 
 from helpdesk import settings as helpdesk_settings
 
-def send_templated_mail(template_name, email_context, recipients, sender=None, bcc=None, fail_silently=False, files=None):
+def send_templated_mail(template_name, email_context, recipients, sender=None, bcc=None, fail_silently=False, files=None, sign=False, encrypt=False, request=None):
     """
-    send_templated_mail() is a warpper around Django's e-mail routines that
+    send_templated_mail() is a wrapper around Django's e-mail routines that
     allows us to easily send multipart (text/plain & text/html) e-mails using
     templates that are stored in the database. This lets the admin provide
     both a text and a HTML template for each message.
@@ -49,6 +49,14 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
 
     files can be a list of tuple. Each tuple should be a filename to attach, 
         along with the File objects to be read. files can be blank.
+        
+    if HELPDESK_USE_GNUPG is set to True, then we also have following options:
+        
+    sign is True if we want to PGP sign this email
+    
+    encrypt is True if we want to PGP encrypt this email to the recipient
+    
+    request is an HTTPRequest object to allow access to the cache
 
     """
     from django import VERSION
@@ -102,6 +110,14 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
     text_part = template_func(
         "%s{%% include '%s' %%}" % (t.plain_text, footer_file)
         ).render(context)
+    
+    if helpdesk_settings.HELPDESK_USE_GNUPG:
+        if sign:
+            try:
+                text_part = sign_message_with_default_key(text_part, request.session['pgp_passphrase'])
+            except:
+                logger.warning('email was not properly signed due to missing request object')
+                return # halt process if failed
 
     email_html_base_file = os.path.join('helpdesk', locale, 'email_html_base.html')
 
@@ -136,7 +152,9 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
                                     sender,
                                     recipients,
                                     bcc=bcc)
-    msg.attach_alternative(html_part, "text/html")
+    if not helpdesk_settings.HELPDESK_USE_GNUPG:
+        # only attach HTML content if not using PGP
+        msg.attach_alternative(html_part, "text/html")
 
     if files:
         for attachment in files:

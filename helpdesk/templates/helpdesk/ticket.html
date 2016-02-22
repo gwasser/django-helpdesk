@@ -170,14 +170,27 @@ function googleTranslateElementInit() {
         {% if helpdesk_settings.HELPDESK_UPDATE_PUBLIC_DEFAULT %}
         <input type='hidden' name='public' value='1'>
         {% else %}
-        <dt><label for='id_public'>{% trans "Is this update public?" %}</label> <span class='form_optional'>{% trans "(Optional)" %}</span></dt>
-        <dd><select name='public'>
-            <option value='0'>{% trans "Private" %}</option>
-            <option value='2'>{% trans "Public - Email to Submitter only" %}</option>
-            <option value='3'>{% trans "Public - Email to Copies-To List only" %}</option>
-            <option value='1'>{% trans "Public - Email to all" %}</option>
-        </select></dd>
-        <dd class='form_help_text'>{% trans "If this is public, the submitter will be e-mailed your comment or resolution." %}</dd>
+            {% if helpdesk_settings.HELPDESK_USE_GNUPG %}
+            <dt><label for='id_public'>{% trans "Select the recipients of this follow-up via email and the public portal." %}</label></dt>
+            <dd><select name='public'>
+                <option value='0'>{% trans "Private" %}</option>
+                <option value='2'>{% trans "Public - Email to Submitter only" %}</option>
+                <option value='3'>{% trans "Public - Email to Copies-To List only" %}</option>
+                <option value='1'>{% trans "Public - Email to all" %}</option>
+            </select></dd>
+            <dt><label for='id_pgppref'>{% trans "Select preferred PGP action for follow-up emails." %}</label></dt>
+            <dd><select name='pgppref'>
+                <option value='1'>{% trans "Sign only" %}</option>
+                <option value='2'>{% trans "Encrypt always -- PGP required, no email sent if no PGP key on file" %}</option>
+                <option value='3'>{% trans "Encrypt if possible -- plain text notification (no details) if no PGP key on file" %}</option>
+                <option value='4'>{% trans "Encrypt, plaintext ok -- full message sent plaintext if no PGP key on file (not recommended)" %}</option>
+                <option value='0'>{% trans "Do not sign or encrypt (not recommended)" %}</option>
+            </select></dd>
+            {% else %}
+            <dt><label for='id_public'>{% trans "Is this update public?" %}</label> <span class='form_optional'>{% trans "(Optional)" %}</span></dt>
+            <dd><input type='checkbox' name='public' value='1' checked='checked' /></dd>
+            <dd class='form_help_text'>{% trans "If this is public, the submitter will be e-mailed your comment or resolution." %}</dd>
+            {% endif %}
         {% endif %}
     </dl>
 
