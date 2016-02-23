@@ -452,8 +452,6 @@ def update_ticket(request, ticket_id, public=False):
         context = Context(context)
 
     comment = template_func(comment).render(context)
-    if helpdesk_settings.HELPDESK_USE_GNUPG and helpdesk_settings.HELPDESK_ALWAYS_SIGN_FOLLOWUPS or pgppref > 0 :
-        comment = sign_message_with_default_key(comment, request.session['pgp_passphrase'])
 
     if owner is -1 and ticket.assigned_to:
         owner = ticket.assigned_to.id
