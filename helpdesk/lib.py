@@ -330,7 +330,7 @@ if helpdesk_settings.HELPDESK_USE_GNUPG:
     def sign_message_with_default_key(message, passphrase):
         ''' uses a GPG instance to sign a message using the helpdesk default key '''
         gpg = get_gpg_instance()
-        signed_data = gpg.sign(message, passphrase=passphrase, keyid=helpdesk_settings.HELPDESK_DEFAULT_SIGNING_KEY_ID)
+        signed_data = gpg.sign(str(message), passphrase=passphrase, keyid=helpdesk_settings.HELPDESK_DEFAULT_SIGNING_KEY_ID)
         
         return str(signed_data)
     
