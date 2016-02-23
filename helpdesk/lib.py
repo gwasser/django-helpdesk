@@ -110,14 +110,6 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
     text_part = template_func(
         "%s{%% include '%s' %%}" % (t.plain_text, footer_file)
         ).render(context)
-    
-    if helpdesk_settings.HELPDESK_USE_GNUPG:
-        if sign:
-            try:
-                text_part = sign_message_with_default_key(text_part, request.session['pgp_passphrase'])
-            except:
-                logger.warning('email was not properly signed due to missing request object')
-                return # halt process if failed
 
     email_html_base_file = os.path.join('helpdesk', locale, 'email_html_base.html')
 
@@ -146,7 +138,23 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
             recipients = recipients.split(',')
     elif type(recipients) != list:
         recipients = [recipients,]
-
+        
+    ''' handle pgp if necessary '''
+    if helpdesk_settings.HELPDESK_USE_GNUPG:
+        if sign:
+            try:
+                text_part = sign_message_with_default_key(text_part, request.session['pgp_passphrase'])
+            except:
+                logger.warning('email was not properly signed due to missing request object')
+                return # halt process if failed
+        if encrypt:
+            try:
+                text_part = encrypt_and_sign_message_with_default_key(text_part, recipients, request.session['pgp_passphrase'])
+            except:
+                logger.warning('email was not properly encrypted to selected recipients')
+                return # halt process if failed
+            
+    ''' finally construct the actual emails '''
     msg = EmailMultiAlternatives(   subject_part.replace('\n', '').replace('\r', ''),
                                     text_part,
                                     sender,
@@ -319,13 +327,20 @@ if helpdesk_settings.HELPDESK_USE_GNUPG:
     
     
     def sign_message_with_default_key(message, passphrase):
-        keyid = helpdesk_settings.HELPDESK_DEFAULT_SIGNING_KEY_ID
-        
+        ''' uses a GPG instance to sign a message using the helpdesk default key '''
         gpg = get_gpg_instance()
-        signed_data = gpg.sign(message, passphrase=passphrase, keyid=keyid)
-        signed_message = str(signed_data)
+        signed_data = gpg.sign(message, passphrase=passphrase, keyid=helpdesk_settings.HELPDESK_DEFAULT_SIGNING_KEY_ID)
         
-        return signed_message
+        return str(signed_data)
+    
+    def encrypt_and_sign_message_with_default_key(message, recipients, passphrase):
+        ''' uses a GPG instance to create a PGP encrypted message to the list of recipient
+        emails or key fingerprints. The resulting message is also signed by the
+        helpdesk default key '''
+        gpg = get_gpg_instance()
+        encrypted_data = gpg.encrypt(data, recipients, sign=helpdesk_settings.HELPDESK_DEFAULT_SIGNING_KEY_ID, passphrase=passphrase)
+        
+        return str(encrypt_data)
     
     def verify_signed_message(message):
         gpg = get_gpg_instance()

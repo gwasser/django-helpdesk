@@ -44,7 +44,7 @@ from helpdesk.models import Ticket, Queue, FollowUp, TicketChange, PreSetReply, 
 from helpdesk import settings as helpdesk_settings
 
 if helpdesk_settings.HELPDESK_USE_GNUPG:
-    from helpdesk.lib import sign_message_with_default_key
+    from helpdesk.lib import sign_message_with_default_key, encrypt_and_sign_message_with_default_key
 
 if helpdesk_settings.HELPDESK_ALLOW_NON_STAFF_TICKET_UPDATE:
     # treat 'normal' users like 'staff'
