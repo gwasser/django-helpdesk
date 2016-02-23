@@ -323,24 +323,32 @@ if helpdesk_settings.HELPDESK_USE_GNUPG:
     import gnupg
     
     def get_gpg_instance():
-        ''' returns a GPG instance with the proper command line options '''
+        ''' Returns a GPG instance with the proper command line options '''
         return gnupg.GPG(gnupghome=helpdesk_settings.HELPDESK_GNUPG_HOME, options=['--pinentry-mode=loopback','--batch'])
     
     
     def sign_message_with_default_key(message, passphrase):
-        ''' uses a GPG instance to sign a message using the helpdesk default key '''
+        ''' Uses a GPG instance to sign a message using the helpdesk default key '''
         gpg = get_gpg_instance()
         signed_data = gpg.sign(str(message), passphrase=passphrase, keyid=helpdesk_settings.HELPDESK_DEFAULT_SIGNING_KEY_ID)
         
         return str(signed_data)
     
     def encrypt_and_sign_message_with_default_key(message, recipients, passphrase):
-        ''' uses a GPG instance to create a PGP encrypted message to the list of recipient
+        ''' Uses a GPG instance to create a PGP encrypted message to the list of recipient
         emails or key fingerprints. The resulting message is also signed by the
         helpdesk default key '''
         gpg = get_gpg_instance()
         encrypted_data = gpg.encrypt(str(message), recipients, sign=helpdesk_settings.HELPDESK_DEFAULT_SIGNING_KEY_ID, passphrase=passphrase)
         return str(encrypted_data)
+    
+    def decrypt_email(cryptotext, passphrase):
+        ''' Uses a GPG instance to decrypt a message in email format. Strips off any email headers,
+        so if you need to keep the headers, do some processing on them first before passing to
+        this function'''
+        gpg = get_gpg_instance()
+        message = gpg.decrypt(str(cryptotext), passphrase=passphrase)
+        return str(message)
     
     def verify_signed_message(message):
         gpg = get_gpg_instance()
