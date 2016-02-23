@@ -141,17 +141,18 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
         
     ''' handle pgp if necessary '''
     if helpdesk_settings.HELPDESK_USE_GNUPG:
-        if sign:
-            try:
-                text_part = sign_message_with_default_key(text_part, request.session['pgp_passphrase'])
-            except:
-                logger.warning('email was not properly signed due to missing request object')
-                return # halt process if failed
         if encrypt:
             try:
                 text_part = encrypt_and_sign_message_with_default_key(text_part, recipients, request.session['pgp_passphrase'])
             except:
                 logger.warning('email was not properly encrypted to selected recipients')
+                print "not encrypted! failed"
+                return # halt process if failed
+        elif sign:
+            try:
+                text_part = sign_message_with_default_key(text_part, request.session['pgp_passphrase'])
+            except:
+                logger.warning('email was not properly signed due to missing request object')
                 return # halt process if failed
             
     ''' finally construct the actual emails '''
@@ -338,9 +339,8 @@ if helpdesk_settings.HELPDESK_USE_GNUPG:
         emails or key fingerprints. The resulting message is also signed by the
         helpdesk default key '''
         gpg = get_gpg_instance()
-        encrypted_data = gpg.encrypt(data, recipients, sign=helpdesk_settings.HELPDESK_DEFAULT_SIGNING_KEY_ID, passphrase=passphrase)
-        
-        return str(encrypt_data)
+        encrypted_data = gpg.encrypt(str(message), recipients, sign=helpdesk_settings.HELPDESK_DEFAULT_SIGNING_KEY_ID, passphrase=passphrase)
+        return str(encrypted_data)
     
     def verify_signed_message(message):
         gpg = get_gpg_instance()
