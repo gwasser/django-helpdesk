@@ -104,6 +104,8 @@ HELPDESK_GNUPG_HOME = getattr(settings, 'HELPDESK_GNUPG_HOME', None)
 HELPDESK_DEFAULT_SIGNING_KEY_ID = getattr(settings, 'HELPDESK_DEFAULT_SIGNING_KEY_ID', None)
 # if both above defined, we can use PGP properly
 HELPDESK_USE_GNUPG = getattr(settings, 'HELPDESK_USE_GNUPG', HELPDESK_GNUPG_HOME is not None and HELPDESK_DEFAULT_SIGNING_KEY_ID is not None)
+# do we use gpg v2.1 or greater? important for some settings, default is RHEL7 which uses gpg v2.0
+HELPDESK_USE_GNUPG_2_1_OR_GREATER = getattr(settings, 'HELPDESK_USE_GNUPG_2_1_OR_GREATER', False)
 # should we always sign followup emails sent thru helpdesk?
 HELPDESK_ALWAYS_SIGN_FOLLOWUPS = getattr(settings, 'HELPDESK_ALWAYS_SIGN_FOLLOWUPS', False)
 # do we always trust any imported keys?

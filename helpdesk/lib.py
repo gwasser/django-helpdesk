@@ -333,7 +333,10 @@ if helpdesk_settings.HELPDESK_USE_GNUPG:
     
     def get_gpg_instance():
         ''' Returns a GPG instance with the proper command line options '''
-        return gnupg.GPG(gnupghome=helpdesk_settings.HELPDESK_GNUPG_HOME, options=['--pinentry-mode=loopback','--batch'])
+        if helpdesk_settings.HELPDESK_USE_GNUPG_2_1_OR_GREATER:
+            return gnupg.GPG(gnupghome=helpdesk_settings.HELPDESK_GNUPG_HOME, options=['--pinentry-mode=loopback','--batch'])
+        else:
+            return gnupg.GPG(gnupghome=helpdesk_settings.HELPDESK_GNUPG_HOME)
     
     
     def sign_message_with_default_key(message, passphrase):
