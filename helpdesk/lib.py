@@ -21,6 +21,7 @@ import logging
 logger = logging.getLogger('helpdesk')
 
 from django.utils.encoding import smart_str
+from django.db.models import Q
 
 from helpdesk import settings as helpdesk_settings
 
@@ -206,17 +207,25 @@ def apply_query(queryset, params):
     params is a dictionary that contains the following:
         filtering: A dict of Django ORM filters, eg:
             {'user__id__in': [1, 3, 103], 'title__contains': 'foo'}
-        other_filter: Another filter of some type, most likely a
-            set of Q() objects.
+       
+        search_string: A freetext search string
+
         sorting: The name of the column to sort by
     """
     for key in params['filtering'].keys():
         filter = {key: params['filtering'][key]}
         queryset = queryset.filter(**filter)
 
-    if params.get('other_filter', None):
-        # eg a Q() set
-        queryset = queryset.filter(params['other_filter'])
+    search = params.get('search_string', None)
+    if search:
+        qset = (
+            Q(title__icontains=search) |
+            Q(description__icontains=search) |
+            Q(resolution__icontains=search) |
+            Q(submitter_email__icontains=search)
+        )
+
+        queryset = queryset.filter(qset)
 
     sorting = params.get('sorting', None)
     if sorting:

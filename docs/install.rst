@@ -35,7 +35,7 @@ Adding To Your Django Project
         'django.contrib.auth',
         'django.contrib.contenttypes',
         'django.contrib.sessions',
-        'django.contrib.sites',
+        'django.contrib.sites',  # Required for determing domain url for use in emails
         'django.contrib.admin',  # Required for helpdesk admin/maintenance
         'django.contrib.humanize',  # Required for elapsed time formatting
         'markdown_deux',  # Required for Knowledgebase item formatting
@@ -96,6 +96,6 @@ Adding To Your Django Project
 
    Alter the URL to suit your installation path.
 
-9. Load initial e-mail templates, otherwise you will not be able to setnd e-mail::
+9. Load initial e-mail templates, otherwise you will not be able to send e-mail::
 
    python manage.py loaddata emailtemplate.json
