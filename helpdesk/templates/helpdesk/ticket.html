@@ -1,5 +1,8 @@
 {% extends "helpdesk/base.html" %}
-{% load i18n bootstrap humanize pgp_utils %}
+{% load i18n bootstrap humanize %}
+{% if helpdesk_settings.HELPDESK_USE_GNUPG %}
+{% load pgp_utils %}
+{% endif %}
 {% load static from staticfiles %}
 {% block helpdesk_title %}{% trans "View Ticket Details" %}{% endblock %}
 {% block helpdesk_head %}
@@ -21,7 +24,7 @@
         $('#id_preset').change(function() {
             preset = $('#id_preset').val();
             if (preset != '') {
-                $.get("{% url 'helpdesk_raw' "preset" %}?id=" + preset, function(data) {
+                $.get("{% url 'helpdesk_raw' 'preset' %}?id=" + preset, function(data) {
                     $("#commentBox").val(data)
                 });
             }
