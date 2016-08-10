@@ -48,15 +48,15 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
     fail_silently is passed to Django's mail routine. Set to 'True' to ignore
         any errors at send time.
 
-    files can be a list of tuple. Each tuple should be a filename to attach, 
+    files can be a list of tuple. Each tuple should be a filename to attach,
         along with the File objects to be read. files can be blank.
-        
+
     if HELPDESK_USE_GNUPG is set to True, then we also have following options:
-        
+
     sign is True if we want to PGP sign this email
-    
+
     encrypt is True if we want to PGP encrypt this email to the recipient
-    
+
     request is an HTTPRequest object to allow access to the cache
 
     """
@@ -100,7 +100,7 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
         sender = settings.DEFAULT_FROM_EMAIL
 
     footer_file = os.path.join('helpdesk', locale, 'email_text_footer.txt')
-    
+
     # get_template_from_string was removed in Django 1.8 http://django.readthedocs.org/en/1.8.x/ref/templates/upgrading.html
     try:
         from django.template import engines
@@ -139,7 +139,7 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
             recipients = recipients.split(',')
     elif type(recipients) != list:
         recipients = [recipients,]
-        
+
     ''' handle pgp if necessary '''
     if helpdesk_settings.HELPDESK_USE_GNUPG:
         if encrypt:
@@ -147,7 +147,6 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
                 text_part = encrypt_and_sign_message_with_default_key(text_part, recipients, request.session['pgp_passphrase'])
             except:
                 logger.warning('email was not properly encrypted to selected recipients')
-                print "not encrypted! failed"
                 return # halt process if failed
         elif sign:
             try:
@@ -155,7 +154,7 @@ def send_templated_mail(template_name, email_context, recipients, sender=None, b
             except:
                 logger.warning('email was not properly signed due to missing request object')
                 return # halt process if failed
-            
+
     ''' finally construct the actual emails '''
     msg = EmailMultiAlternatives(   subject_part.replace('\n', '').replace('\r', ''),
                                     text_part,
@@ -207,7 +206,7 @@ def apply_query(queryset, params):
     params is a dictionary that contains the following:
         filtering: A dict of Django ORM filters, eg:
             {'user__id__in': [1, 3, 103], 'title__contains': 'foo'}
-       
+
         search_string: A freetext search string
 
         sorting: The name of the column to sort by
@@ -330,22 +329,22 @@ def text_is_spam(text, request):
 if helpdesk_settings.HELPDESK_USE_GNUPG:
 
     import gnupg
-    
+
     def get_gpg_instance():
         ''' Returns a GPG instance with the proper command line options '''
         if helpdesk_settings.HELPDESK_USE_GNUPG_2_1_OR_GREATER:
             return gnupg.GPG(gnupghome=helpdesk_settings.HELPDESK_GNUPG_HOME, options=['--pinentry-mode=loopback','--batch'])
         else:
             return gnupg.GPG(gnupghome=helpdesk_settings.HELPDESK_GNUPG_HOME)
-    
-    
+
+
     def sign_message_with_default_key(message, passphrase):
         ''' Uses a GPG instance to sign a message using the helpdesk default key '''
         gpg = get_gpg_instance()
         signed_data = gpg.sign(str(message), passphrase=passphrase, keyid=helpdesk_settings.HELPDESK_DEFAULT_SIGNING_KEY_ID)
-        
+
         return str(signed_data)
-    
+
     def encrypt_and_sign_message_with_default_key(message, recipients, passphrase):
         ''' Uses a GPG instance to create a PGP encrypted message to the list of recipient
         emails or key fingerprints. The resulting message is also signed by the
@@ -353,7 +352,7 @@ if helpdesk_settings.HELPDESK_USE_GNUPG:
         gpg = get_gpg_instance()
         encrypted_data = gpg.encrypt(str(message), recipients, sign=helpdesk_settings.HELPDESK_DEFAULT_SIGNING_KEY_ID, passphrase=passphrase)
         return str(encrypted_data)
-    
+
     def decrypt_email(cryptotext, passphrase):
         ''' Uses a GPG instance to decrypt a message in email format. Strips off any email headers,
         so if you need to keep the headers, do some processing on them first before passing to
@@ -361,12 +360,12 @@ if helpdesk_settings.HELPDESK_USE_GNUPG:
         gpg = get_gpg_instance()
         message = gpg.decrypt(str(cryptotext), passphrase=passphrase)
         return str(message)
-    
+
     def verify_signed_message(message):
         gpg = get_gpg_instance()
         verified = gpg.verify(message)
         return True if verified else False
-    
+
     def signed_message_data(message):
         gpg = get_gpg_instance()
         data = gpg.verify(message)
@@ -376,4 +375,4 @@ if helpdesk_settings.HELPDESK_USE_GNUPG:
         elif str(data.key_status).find('revoked',0) > -1:
             decorator = ' was REVOKED'
         return ('Key ID %s <%s>' % (data.key_id, data.username)) + decorator
-    
+
