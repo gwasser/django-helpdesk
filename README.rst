@@ -19,6 +19,7 @@ contributors reaching far beyond Jutda.
 Complete documentation is available in the docs/ directory,
 or online at http://django-helpdesk.readthedocs.org/.
 
+
 Demo Quickstart
 ---------------
 
@@ -27,11 +28,17 @@ get started with testing or developing `django-helpdesk`. The demo project
 resides in the `demo/` top-level folder.
 
 It's likely that you can start up a demo project server by running
-only the command::
+only the command:
 
     make rundemo
 
-then pointing your web browser at `localhost:8080`.
+or with docker:
+
+    docker build . -t demodesk
+    docker run --rm -v "$PWD:/app" -p 8080:8080 demodesk
+
+then pointing your web browser at http://localhost:8080 (log in as user
+`admin`` with password `Test1234`).
 
 For more information and options, please read the `demo/README.rst` file.
 
@@ -48,36 +55,39 @@ to alert you to this shortcoming. There is no way around it, sorry.
 Installation
 ------------
 
-`django-helpdesk` requires:
+* |standalone_icon| For **standalone** installation, refer to `standalone documentation <./docs/standalone.rst>`_.
 
-* Python 3.8+
-* Django 4.2 LTS (latest bugfix release)
+* |django_icon| To **integrate** with an existing Django application, follow the guidelines in `installation documentation <./docs/install.rst>`_ and `configuration documentation <./docs/configuration.rst>`_.
 
-You can quickly install the latest stable version of `django-helpdesk`
-app via `pip`::
+.. |standalone_icon| image:: helpdesk/static/helpdesk/img/icon512.png
+   :height: 24px
+   :width: 24px
+   :align: middle
 
-    pip install django-helpdesk
-
-You may also check out the `master` branch on GitHub, and install manually::
-
-    python setup.py install
-
-Either way, you will need to add `django-helpdesk` to an existing
-Django project.
-
-For further installation information see `docs/install.html`
-and `docs/configuration.html`
+.. |django_icon| image:: helpdesk/static/helpdesk/img/django-logo-positive.png
+   :height: 24px
+   :width: 60px
+   :align: middle
 
 Developer Environment
 ---------------------
 
 Follow these steps to set up your development environment to contribute to helpdesk:
+ - check out the helpdesk app to your local file system::
+        git clone https://github.com/django-helpdesk/django-helpdesk.git
+ 
  - install a virtual environment
      - using virtualenv from the helpdesk base folder do::
           virtualenv .venv && source .venv/bin/activate
 
  - install the requirements for development::
     pip install -r requirements.txt -r requirements-dev.txt
+
+ - install the requirements for testing as well::
+    pip install -r requirements.txt -r requirements-dev.txt -r requirements-testing.txt
+
+To reactivate a VENV just run:
+   source .venv/bin/activate
 
 To see option for the Makefile run: `make`
 

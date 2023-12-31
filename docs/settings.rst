@@ -37,7 +37,6 @@ If you want to override the default settings for your users, create ``HELPDESK_D
             'tickets_per_page': 25
             }
 
-
 Generic Options
 ---------------
 These changes are visible throughout django-helpdesk
@@ -85,6 +84,10 @@ These changes are visible throughout django-helpdesk
 - **HELPDESK_MAX_EMAIL_ATTACHMENT_SIZE** Maximum size, in bytes, of file attachments that will be sent via email
 
   **Default:** ``HELPDESK_MAX_EMAIL_ATTACHMENT_SIZE = 512000``
+
+- **VALID_EXTENSIONS** Valid extensions for file types that can be attached to tickets
+
+  **Default:** ``VALID_EXTENSIONS = ['.txt', '.asc', '.htm', '.html', '.pdf', '.doc', '.docx', '.odt', '.jpg', '.png', '.eml']
 
 - **QUEUE_EMAIL_BOX_UPDATE_ONLY** Only process mail with a valid tracking ID; all other mail will be ignored instead of creating a new ticket.
 
@@ -179,11 +182,6 @@ Staff Ticket Creation Settings
 - **HELPDESK_CREATE_TICKET_HIDE_ASSIGNED_TO** Hide the 'assigned to' / 'Case owner' field from the 'create_ticket' view? It'll still show on the ticket detail/edit form.
 
   **Default:** ``HELPDESK_CREATE_TICKET_HIDE_ASSIGNED_TO = False``
-
-- **HELPDESK_ACTIVATE_API_ENDPOINT** Activate the API endpoint to manage tickets thanks to Django REST Framework. See the API section in documentation for more information.
-
-  **Default:** ``HELPDESK_ACTIVATE_API_ENDPOINT = False``
-
 
 Staff Ticket View Settings
 ------------------------------

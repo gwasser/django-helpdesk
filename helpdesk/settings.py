@@ -7,6 +7,7 @@ from django import forms
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 import os
+import re
 import warnings
 
 
@@ -59,9 +60,6 @@ HELPDESK_ENABLE_TIME_SPENT_ON_TICKET = getattr(settings,
 HELPDESK_ANON_ACCESS_RAISES_404 = getattr(settings,
                                           'HELPDESK_ANON_ACCESS_RAISES_404',
                                           False)
-
-# show knowledgebase links?
-HELPDESK_KB_ENABLED = getattr(settings, 'HELPDESK_KB_ENABLED', True)
 
 # Disable Timeline on ticket list
 HELPDESK_TICKETS_TIMELINE_ENABLED = getattr(
@@ -203,10 +201,6 @@ HELPDESK_MAX_EMAIL_ATTACHMENT_SIZE = getattr(
 HELPDESK_CREATE_TICKET_HIDE_ASSIGNED_TO = getattr(
     settings, 'HELPDESK_CREATE_TICKET_HIDE_ASSIGNED_TO', False)
 
-# Activate the API endpoint to manage tickets thanks to Django REST Framework
-HELPDESK_ACTIVATE_API_ENDPOINT = getattr(
-    settings, 'HELPDESK_ACTIVATE_API_ENDPOINT', False)
-
 
 #################
 # email options #
@@ -229,14 +223,25 @@ HELPDESK_ENABLE_PER_QUEUE_STAFF_PERMISSION = getattr(
 
 # use https in the email links
 HELPDESK_USE_HTTPS_IN_EMAIL_LINK = getattr(
-    settings, 'HELPDESK_USE_HTTPS_IN_EMAIL_LINK', False)
+    settings, 'HELPDESK_USE_HTTPS_IN_EMAIL_LINK', settings.SECURE_SSL_REDIRECT)
 
-HELPDESK_TEAMS_MODEL = getattr(
-    settings, 'HELPDESK_TEAMS_MODEL', 'pinax_teams.Team')
-HELPDESK_TEAMS_MIGRATION_DEPENDENCIES = getattr(settings, 'HELPDESK_TEAMS_MIGRATION_DEPENDENCIES', [
+# Default to True for backwards compatibility
+HELPDESK_TEAMS_MODE_ENABLED = getattr(settings, 'HELPDESK_TEAMS_MODE_ENABLED', True)
+if HELPDESK_TEAMS_MODE_ENABLED:
+    HELPDESK_TEAMS_MODEL = getattr(
+        settings, 'HELPDESK_TEAMS_MODEL', 'pinax_teams.Team')
+    HELPDESK_TEAMS_MIGRATION_DEPENDENCIES = getattr(settings, 'HELPDESK_TEAMS_MIGRATION_DEPENDENCIES', [
                                                 ('pinax_teams', '0004_auto_20170511_0856')])
-HELPDESK_KBITEM_TEAM_GETTER = getattr(
-    settings, 'HELPDESK_KBITEM_TEAM_GETTER', lambda kbitem: kbitem.team)
+    HELPDESK_KBITEM_TEAM_GETTER = getattr(
+        settings, 'HELPDESK_KBITEM_TEAM_GETTER', lambda kbitem: kbitem.team)
+else:
+    HELPDESK_TEAMS_MODEL = settings.AUTH_USER_MODEL
+    HELPDESK_TEAMS_MIGRATION_DEPENDENCIES = []
+    HELPDESK_KBITEM_TEAM_GETTER = lambda _: None
+
+# show knowledgebase links?
+# If Teams mode is enabled then it has to be on
+HELPDESK_KB_ENABLED = True if HELPDESK_TEAMS_MODE_ENABLED else getattr(settings, 'HELPDESK_KB_ENABLED', True)
 
 # Include all signatures and forwards in the first ticket message if set
 # Useful if you get forwards dropped from them while they are useful part
@@ -265,3 +270,27 @@ HELPDESK_OAUTH = getattr(
 
 # Set Debug Logging Level for IMAP Services. Default to '0' for No Debugging
 HELPDESK_IMAP_DEBUG_LEVEL = getattr(settings, 'HELPDESK_IMAP_DEBUG_LEVEL', 0)
+
+#############################################
+# file permissions - Attachment directories #
+#############################################
+
+# Attachment directories should be created with permission 755 (rwxr-xr-x)
+# Override it in your own Django settings.py
+HELPDESK_ATTACHMENT_DIR_PERMS = int(getattr(settings, 'HELPDESK_ATTACHMENT_DIR_PERMS', "755"), 8)
+
+def get_followup_webhook_urls():
+    urls = os.environ.get('HELPDESK_FOLLOWUP_WEBHOOK_URLS', None)
+    if urls:
+        return re.split(r'[\s],[\s]', urls)
+
+HELPDESK_GET_FOLLOWUP_WEBHOOK_URLS = getattr(settings, 'HELPDESK_GET_FOLLOWUP_WEBHOOK_URLS', get_followup_webhook_urls)
+
+def get_new_ticket_webhook_urls():
+    urls = os.environ.get('HELPDESK_NEW_TICKET_WEBHOOK_URLS', None)
+    if urls:
+        return urls.split(',')
+
+HELPDESK_GET_NEW_TICKET_WEBHOOK_URLS = getattr(settings, 'HELPDESK_GET_NEW_TICKET_WEBHOOK_URLS', get_new_ticket_webhook_urls)
+
+HELPDESK_WEBHOOK_TIMEOUT = getattr(settings, 'HELPDESK_WEBHOOK_TIMEOUT', 3)

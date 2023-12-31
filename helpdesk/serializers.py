@@ -1,11 +1,13 @@
-from .forms import TicketForm
-from .lib import format_time_spent, process_attachments
-from .models import CustomField, FollowUp, FollowUpAttachment, Ticket
-from .user import HelpdeskUser
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.contrib.humanize.templatetags import humanize
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+
+from .forms import TicketForm
+from .lib import format_time_spent
+from .models import CustomField, FollowUp, FollowUpAttachment, Ticket
+from .user import HelpdeskUser
+from .update_ticket import update_ticket
 
 
 class DatatablesTicketSerializer(serializers.ModelSerializer):
@@ -70,6 +72,47 @@ class DatatablesTicketSerializer(serializers.ModelSerializer):
         return obj.kbitem.title if obj.kbitem else ""
 
 
+class PublicTicketListingSerializer(serializers.ModelSerializer):
+    """
+    A serializer to be used by the public API for listing tickets. Don't expose private fields here!
+    """
+    ticket = serializers.SerializerMethodField()
+    submitter = serializers.SerializerMethodField()
+    created = serializers.SerializerMethodField()
+    due_date = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+    queue = serializers.SerializerMethodField()
+    kbitem = serializers.SerializerMethodField()
+    secret_key = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Ticket
+        # fields = '__all__'
+        fields = ('ticket', 'id', 'title', 'queue', 'status',
+                  'created', 'due_date', 'submitter', 'kbitem', 'secret_key')
+
+    def get_queue(self, obj):
+        return {"title": obj.queue.title, "id": obj.queue.id}
+
+    def get_ticket(self, obj):
+        return str(obj.id) + " " + obj.ticket
+
+    def get_status(self, obj):
+        return obj.get_status
+
+    def get_created(self, obj):
+        return humanize.naturaltime(obj.created)
+
+    def get_due_date(self, obj):
+        return humanize.naturaltime(obj.due_date)
+
+    def get_submitter(self, obj):
+        return obj.submitter_email
+
+    def get_kbitem(self, obj):
+        return obj.kbitem.title if obj.kbitem else ""
+
+
 class FollowUpAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = FollowUpAttachment
@@ -84,20 +127,30 @@ class FollowUpSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    date = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = FollowUp
         fields = (
-            'id', 'ticket', 'date', 'title', 'comment', 'public', 'user', 'new_status', 'message_id',
-            'time_spent', 'followupattachment_set', 'attachments'
+            'id', 'ticket', 'user', 'title', 'comment', 'public', 'new_status',
+            'time_spent', 'attachments', 'followupattachment_set', 'date', 'message_id',
         )
 
     def create(self, validated_data):
-        attachments = validated_data.pop('attachments', None)
-        followup = super().create(validated_data)
-        if attachments:
-            process_attachments(followup, attachments)
-        return followup
+        if validated_data["user"]:
+            user = validated_data["user"]
+        else:
+            user = self.context['request'].user
+        return update_ticket(
+            user=user,
+            ticket=validated_data["ticket"],
+            title=validated_data.get("title", None),
+            comment=validated_data.get("comment", ""),
+            files=validated_data.get("attachments", None),
+            public=validated_data.get("public", False),
+            new_status=validated_data.get("new_status", None),
+            time_spent=validated_data.get("time_spent", None),
+        )
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -152,7 +205,7 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
-        model = User
+        model = get_user_model()
         fields = ('first_name', 'last_name', 'username', 'email', 'password')
 
     def create(self, validated_data):
