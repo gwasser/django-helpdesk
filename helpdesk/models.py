@@ -8,9 +8,10 @@ models.py - Model (and hence database) definitions. This is the core of the
 """
 
 
-from .lib import convert_value
+from .lib import format_time_spent, convert_value, daily_time_spent_calculation
 from .templated_email import send_templated_mail
 from .validators import validate_file_extension
+from .webhooks import send_new_ticket_webhook
 import datetime
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -30,17 +31,6 @@ import os
 import re
 from rest_framework import serializers
 import uuid
-
-
-def format_time_spent(time_spent):
-    if time_spent:
-        time_spent = "{0:02d}h:{1:02d}m".format(
-            time_spent.seconds // 3600,
-            time_spent.seconds % 3600 // 60
-        )
-    else:
-        time_spent = ""
-    return time_spent
 
 
 class EscapeHtml(Extension):
@@ -462,27 +452,17 @@ class Ticket(models.Model):
     the dashboard to prompt users to take ownership of them.
     """
 
-    OPEN_STATUS = 1
-    REOPENED_STATUS = 2
-    RESOLVED_STATUS = 3
-    CLOSED_STATUS = 4
-    DUPLICATE_STATUS = 5
+    OPEN_STATUS = helpdesk_settings.OPEN_STATUS
+    REOPENED_STATUS = helpdesk_settings.REOPENED_STATUS
+    RESOLVED_STATUS = helpdesk_settings.RESOLVED_STATUS
+    CLOSED_STATUS = helpdesk_settings.CLOSED_STATUS
+    DUPLICATE_STATUS = helpdesk_settings.DUPLICATE_STATUS
 
-    STATUS_CHOICES = (
-        (OPEN_STATUS, _('Open')),
-        (REOPENED_STATUS, _('Reopened')),
-        (RESOLVED_STATUS, _('Resolved')),
-        (CLOSED_STATUS, _('Closed')),
-        (DUPLICATE_STATUS, _('Duplicate')),
-    )
+    STATUS_CHOICES = helpdesk_settings.TICKET_STATUS_CHOICES
+    OPEN_STATUSES = helpdesk_settings.TICKET_OPEN_STATUSES
+    STATUS_CHOICES_FLOW = helpdesk_settings.TICKET_STATUS_CHOICES_FLOW
 
-    PRIORITY_CHOICES = (
-        (1, _('1. Critical')),
-        (2, _('2. High')),
-        (3, _('3. Normal')),
-        (4, _('4. Low')),
-        (5, _('5. Very Low')),
-    )
+    PRIORITY_CHOICES = helpdesk_settings.TICKET_PRIORITY_CHOICES
 
     title = models.CharField(
         _('Title'),
@@ -664,6 +644,8 @@ class Ticket(models.Model):
         if self.queue.enable_notifications_on_email_events:
             for cc in self.ticketcc_set.all():
                 send('ticket_cc', cc.email_address)
+        if "new_ticket_cc" in roles:
+            send_new_ticket_webhook(self)
         return recipients
 
     def _get_assigned_to(self):
@@ -717,6 +699,22 @@ class Ticket(models.Model):
             dep_msg = _(' - Open dependencies')
         return u'%s%s%s' % (self.get_status_display(), held_msg, dep_msg)
     get_status = property(_get_status)
+
+    def _get_allowed_status_flow(self):
+        """
+        Returns the list of allowed ticket status modifications for current state.
+        """
+        status_id_list = self.STATUS_CHOICES_FLOW.get(self.status, ())
+        if status_id_list:
+            # keep defined statuses in order and add labels for display
+            status_dict = dict(helpdesk_settings.TICKET_STATUS_CHOICES)
+            new_statuses = [(status_id, status_dict.get(status_id, _('No label')))
+                            for status_id in status_id_list]
+        else:
+            # defaults to all choices if status was not mapped
+            new_statuses = helpdesk_settings.TICKET_STATUS_CHOICES
+        return new_statuses
+    get_allowed_status_flow = property(_get_allowed_status_flow)
 
     def _get_ticket_url(self):
         """
@@ -774,9 +772,8 @@ class Ticket(models.Model):
         True = any dependencies are resolved
         False = There are non-resolved dependencies
         """
-        OPEN_STATUSES = (Ticket.OPEN_STATUS, Ticket.REOPENED_STATUS)
         return TicketDependency.objects.filter(ticket=self).filter(
-            depends_on__status__in=OPEN_STATUSES).count() == 0
+            depends_on__status__in=Ticket.OPEN_STATUSES).count() == 0
     can_be_resolved = property(_can_be_resolved)
 
     def get_submitter_userprofile(self):
@@ -992,9 +989,12 @@ class FollowUp(models.Model):
         return u"%s#followup%s" % (self.ticket.get_absolute_url(), self.id)
 
     def save(self, *args, **kwargs):
-        t = self.ticket
-        t.modified = timezone.now()
-        t.save()
+        self.ticket.modified = timezone.now()
+        self.ticket.save()
+
+        if helpdesk_settings.FOLLOWUP_TIME_SPENT_AUTO and not self.time_spent:
+            self.time_spent = self.time_spent_calculation()
+
         super(FollowUp, self).save(*args, **kwargs)
 
     def get_markdown(self):
@@ -1004,6 +1004,62 @@ class FollowUp(models.Model):
     def time_spent_formated(self):
         return format_time_spent(self.time_spent)
 
+    def time_spent_calculation(self):
+        "Returns timedelta according to rules settings."
+
+        # extract earliest from previous follow-up or ticket
+        try:
+            prev_fup_qs = self.ticket.followup_set.all()
+            if self.id:
+                prev_fup_qs = prev_fup_qs.filter(id__lt=self.id)
+            prev_fup = prev_fup_qs.latest("date")
+            earliest = prev_fup.date
+        except ObjectDoesNotExist:
+            earliest = self.ticket.created
+
+        # extract previous status from follow-up or ticket
+        try:
+            prev_fup_qs = self.ticket.followup_set.exclude(new_status__isnull=True)
+            if self.id:
+                prev_fup_qs = prev_fup_qs.filter(id__lt=self.id)
+            prev_fup = prev_fup_qs.latest("date")
+            prev_status = prev_fup.new_status
+        except ObjectDoesNotExist:
+            prev_status = self.ticket.status
+        
+        # latest time is current follow-up date
+        latest = self.date
+        
+        time_spent_seconds = 0
+        open_hours = helpdesk_settings.FOLLOWUP_TIME_SPENT_OPENING_HOURS
+        holidays = helpdesk_settings.FOLLOWUP_TIME_SPENT_EXCLUDE_HOLIDAYS
+        exclude_statuses = helpdesk_settings.FOLLOWUP_TIME_SPENT_EXCLUDE_STATUSES
+        exclude_queues = helpdesk_settings.FOLLOWUP_TIME_SPENT_EXCLUDE_QUEUES
+
+        # split time interval by days
+        days = latest.toordinal() - earliest.toordinal()
+        for day in range(days + 1):
+            if day == 0:
+                start_day_time = earliest
+                if days == 0:
+                    # close single day case
+                    end_day_time = latest
+                else:
+                    end_day_time = earliest.replace(hour=23, minute=59, second=59)
+            elif day == days:
+                start_day_time = latest.replace(hour=0, minute=0, second=0)
+                end_day_time = latest
+            else:
+                middle_day_time = earliest + datetime.timedelta(days=day)
+                start_day_time = middle_day_time.replace(hour=0, minute=0, second=0)
+                end_day_time = middle_day_time.replace(hour=23, minute=59, second=59)
+            
+            if (start_day_time.strftime("%Y-%m-%d") not in holidays and
+                prev_status not in exclude_statuses and
+                self.ticket.queue.slug not in exclude_queues):
+                time_spent_seconds += daily_time_spent_calculation(start_day_time, end_day_time, open_hours)
+
+        return datetime.timedelta(seconds=time_spent_seconds)
 
 class TicketChange(models.Model):
     """
