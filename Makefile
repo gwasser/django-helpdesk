@@ -5,6 +5,7 @@
 #
 # For details about how to develop django-helpdesk,
 # see CONTRIBUTING.rst.
+UV = uv
 PIP = pip3
 TOX = tox
 
@@ -20,7 +21,15 @@ help:
 #: develop - Install minimal development utilities for Python3.
 .PHONY: develop
 develop:
-	$(PIP) install -e .
+	$(UV) venv
+	$(UV) sync --all-extras --dev --group test
+	$(UV) tool install pre-commit --with pre-commit-uv --force-reinstall
+	pre-commit install
+
+#: sync - Synchronize the environment with the project configuration
+.PHONY: sync
+sync:
+	$(UV) sync --all-extras --dev --group test
 
 
 #: clean - Basic cleanup, mostly temporary files.
@@ -36,10 +45,9 @@ clean:
 distclean: clean
 	rm -rf *.egg
 	rm -rf *.egg-info
-	rm -rf demo/*.egg-info
-	rm -rf helpdesk/attachments/
+	rm -rf helpdesk/attachments
 	# remove the django-created database
-	rm -f demo/demodesk/*.sqlite3
+	rm -f demodesk/*.sqlite3
 
 
 #: maintainer-clean - Remove almost everything that can be re-generated.
@@ -53,25 +61,21 @@ maintainer-clean: distclean
 #: test - Run test suites.
 .PHONY: test
 test:
-	mkdir -p var
-	$(PIP) install -e .[test]
-	$(TOX)
-	rm -rf var
+	$(UV) run quicktest.py
 	
-
 
 #: format - Run the PEP8 formatter.
 .PHONY: format
 format:
-	autopep8 --exit-code --global-config .flake8 helpdesk
-	isort --line-length=120 --src helpdesk .
+	uv tool run ruff check --fix # Fix linting errors
+	uv tool run ruff format # fix formatting errors
 
 
 #: checkformat - checks formatting against configured format specifications for the project.
 .PHONY: checkformat
 checkformat:
-	flake8 helpdesk --count --show-source --statistics --exit-zero --max-complexity=20
-	isort --line-length=120 --src helpdesk . --check
+	uv tool run ruff check # linting check
+	uv tool run ruff format --check # format check
 
 
 #: documentation - Build documentation (Sphinx, README, ...).
@@ -92,30 +96,26 @@ readme:
 
 
 #: demo - Setup demo project using Python3.
+# Requires using the PYTHONPATH prefix because the project directory is not set in the path
 .PHONY: demo
 demo:
-	# running it with and without --user flag because it started to be problematic for some setups
-	$(PIP) install -e . --user || $(PIP) install -e .
-	$(PIP) install -e demo --user || $(PIP) install -e demo
-	demodesk migrate --noinput
-	# Create superuser; user will be prompted to manually set a password
-	# When you get a prompt, enter a password of your choosing.
-	# We suggest a default of 'Test1234' for the demo project.
-	demodesk createsuperuser --username admin --email helpdesk@example.com
+	uv  sync  --all-extras --dev --group test --group teams
+	uv run manage.py migrate --noinput
 	# Install fixtures
-	demodesk loaddata emailtemplate.json
-	demodesk loaddata demo.json
+	uv run manage.py loaddata emailtemplate.json
+	# The password for the "admin" user is 'Pa33w0rd' for the demo project.
+	uv run manage.py loaddata demo.json
 
 
 #: rundemo - Run demo server using Python3.
 .PHONY: rundemo
 rundemo: demo
-	demodesk runserver 8080
+	uv run manage.py runserver 8080
 	
 #: migrations - Create Django migrations for this project.
 .PHONY: migrations
 migrations: demo
-	    demodesk makemigrations
+	uv run manage.py makemigrations
 
 
 #: release - Tag and push to PyPI.

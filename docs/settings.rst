@@ -1,6 +1,9 @@
 Settings
 ========
 
+.. contents:: In this document...
+   :depth: 2
+
 First, django-helpdesk needs  ``django.core.context_processors.request`` activated, so you must add it to the ``settings.py``. Add the following::
 
     TEMPLATES = [
@@ -86,6 +89,10 @@ These changes are visible throughout django-helpdesk
 - **HELPDESK_NAVIGATION_ENABLED** Show extended navigation by default, to all users, irrespective of staff status?
 
   **Default:** ``HELPDESK_NAVIGATION_ENABLED = False``
+  
+- **HELPDESK_SHOW_MY_TICKETS_IN_NAV_FOR_STAFF** Show "My tickets" for staff. Typically used for help desk deployments that allow staff to create tickets to action other staff members.
+
+  **Default:** ``HELPDESK_SHOW_MY_TICKETS_IN_NAV_FOR_STAFF = True``
 
 - **HELPDESK_TRANSLATE_TICKET_COMMENTS** Show dropdown list of languages that ticket comments can be translated into via Google Translate?
 
@@ -110,6 +117,14 @@ These changes are visible throughout django-helpdesk
 - **HELPDESK_EMAIL_SUBJECT_TEMPLATE** Subject template for templated emails. ``%(subject)s`` represents the subject wording from the email template (e.g. "(Closed)"). *Warning*: your subject template should always include a ``{{ ticket.ticket }}`` somewhere as many ``django-helpdesk`` features rely on the ticket ID in the subject line in order to correctly route mail to the corresponding ticket. If you leave out the ticket ID, your helpdesk may not work correctly!
 
   **Default:** ``HELPDESK_EMAIL_SUBJECT_TEMPLATE = "{{ ticket.ticket }} {{ ticket.title|safe }} %(subject)s"``
+
+- **HELPDESK_NOTIFY_SUBMITTER_FOR_ALL_TICKET_CHANGES** Send email to submitter for all ticket updates. Default is to only sends to submitter for followups marked as public (defaults to True) on ticket creation, closing, status changes or followup comment.
+
+  **Default:** ``HELPDESK_NOTIFY_SUBMITTER_FOR_ALL_TICKET_CHANGES = False``
+
+- **HELPDESK_PRIVATE_FOLLOWUP_MEANS_NO_EMAILS** If ``True``, private follow-ups (marked with ``public=False``) will not trigger any email notifications to any recipients (submitters, assigned users, CC'd users, or queue notifications). This provides complete privacy for internal staff communications. Public follow-ups (``public=True``) continue to work normally. This setting overrides other notification settings like ``HELPDESK_NOTIFY_SUBMITTER_FOR_ALL_TICKET_CHANGES`` when the follow-up is private.
+
+  **Default:** ``HELPDESK_PRIVATE_FOLLOWUP_MEANS_NO_EMAILS = False``
 
 - **HELPDESK_EMAIL_FALLBACK_LOCALE** Fallback locale for templated emails when queue locale not found
 
@@ -202,6 +217,9 @@ Options that change ticket updates
 
   **Default:** ``HELPDESK_STAFF_ONLY_TICKET_CC = False``
 
+- **HELPDESK_SHOW_CUSTOM_FIELDS_FOLLOW_UP_LIST** Show configured custom fields in the follow-up form.
+
+  **Default:** ``HELPDESK_SHOW_CUSTOM_FIELDS_FOLLOW_UP_LIST = []``
 
 Options that change ticket properties
 -------------------------------------

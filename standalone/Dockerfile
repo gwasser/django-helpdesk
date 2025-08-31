@@ -1,4 +1,5 @@
-FROM python:3.10-slim-bullseye
+#see github workflows for docker build command
+FROM python:3.11-slim-bullseye
 LABEL src=https://github.com/django-helpdesk/django-helpdesk
 RUN apt-get update
 RUN apt-get install -yqq \
@@ -6,14 +7,28 @@ RUN apt-get install -yqq \
    postgresql-client \
    cron \
    git
-COPY requirements.txt /opt/django-helpdesk/requirements.txt
-COPY standalone/extra-requirements.txt /opt/django-helpdesk/standalone/extra-requirements.txt
-RUN pip3 install -r /opt/django-helpdesk/requirements.txt
-RUN pip3 install -r /opt/django-helpdesk/standalone/extra-requirements.txt
-COPY . /opt/django-helpdesk
+
+# Copy directories
+COPY django-helpdesk/src/ /opt/django-helpdesk/src/
+COPY django-helpdesk/standalone/ /opt/django-helpdesk/standalone/
+
+# Copy files
+COPY django-helpdesk/pyproject.toml /opt/django-helpdesk/
+COPY django-helpdesk/README.rst /opt/django-helpdesk/
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+RUN pip3 install --upgrade pip
+RUN pip3 install packaging
 WORKDIR /opt/django-helpdesk
-RUN pip3 install -e .
-RUN DJANGO_HELPDESK_SECRET_KEY=foo python3 standalone/manage.py collectstatic
+ENV UV_SYSTEM_PYTHON=1
+RUN uv sync
+RUN uv pip install -r /opt/django-helpdesk/standalone/requirements.txt
+
+WORKDIR /opt/django-helpdesk/standalone
+ENV DJANGO_SETTINGS_MODULE=standalone.config.settings
+ENV PYTHONPATH=/opt/django-helpdesk/src:/opt/django-helpdesk
+
+RUN DJANGO_HELPDESK_SECRET_KEY=foo python3 manage.py collectstatic --noinput
 
 RUN echo "* * * * * root . /etc/env && /usr/local/bin/python3 /opt/django-helpdesk/standalone/manage.py get_email >> /var/log/cron.log 2>&1" > /etc/crontab
 RUN chmod 0644 /etc/crontab

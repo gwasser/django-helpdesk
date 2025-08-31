@@ -36,9 +36,13 @@ Before django-helpdesk will be much use, you need to do some basic configuration
 
    This will run the escalation process hourly, using the 'Escalation Days' setting for each queue to determine which tickets to escalate.
 
+   To notify users of outstanding tickets without adding an entry to the ticket, use the `notify-only` flag. This will send the emails without creating a follow-up::
+
+    0 * * * * /path/to/helpdesksite/manage.py escalate_tickets --notify-only
+
 5. If you wish to exclude some days (eg, weekends) from escalation calculations, enter the dates manually via the Admin, or setup a cronjob to run a management command on a regular basis::
 
-    0 0 * * 0 /path/to/helpdesksite/manage.py create_escalation_exclusions --days saturday,sunday --escalate-verbosely
+    0 0 * * 0 /path/to/helpdesksite/manage.py create_escalation_exclusions --days saturday sunday
 
    This will, on a weekly basis, create exclusions for the coming weekend.
 
@@ -91,3 +95,11 @@ You may add your own site specific navigation header to be included inside the <
     helpdesk/custom_navigation_header.html
 
 2. Update the contents to display your custom navigation.
+
+Suppressible Log Messages
+-------------------------
+Some logging messages support being switched on or off according to deployment preferences.
+
+The following settings variables control emitting log messages for specific scenarios:
+  LOG_WARN_WHEN_CC_EMAIL_NOT_LINKED_TO_A_USER - there is no user matching the email address in the CC list. Defaults to False
+  LOG_WARN_WHEN_CC_EMAIL_LINKED_TO_MORE_THAN_1_USER - there is more than 1 user matching the email address in the CC list. Defaults to True

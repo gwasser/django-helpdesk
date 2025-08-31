@@ -1,4 +1,5 @@
 """django-helpdesk setup"""
+
 from distutils.util import convert_path
 from fnmatch import fnmatchcase
 import os
@@ -6,7 +7,7 @@ from setuptools import find_packages, setup
 import sys
 
 
-version = '1.2.0'
+version = "1.8.0"
 
 
 # Provided as an attribute, so you can append to these instead
@@ -77,8 +78,7 @@ def find_package_data(
                         bad_name = True
                         if show_ignored:
                             print(
-                                "Directory %s ignored by pattern %s" % (
-                                    fn, pattern),
+                                "Directory %s ignored by pattern %s" % (fn, pattern),
                                 file=sys.stderr,
                             )
 
@@ -92,8 +92,7 @@ def find_package_data(
                         new_package = package + "." + name
                     stack.append((fn, "", new_package, False))
                 else:
-                    stack.append((fn, prefix + name + "/",
-                                  package, only_in_packages))
+                    stack.append((fn, prefix + name + "/", package, only_in_packages))
             elif package or not only_in_packages:
                 # is a file
                 bad_name = False
@@ -102,8 +101,7 @@ def find_package_data(
                         bad_name = True
                         if show_ignored:
                             print(
-                                "File %s ignored by pattern %s" % (
-                                    fn, pattern),
+                                "File %s ignored by pattern %s" % (fn, pattern),
                                 file=sys.stderr,
                             )
                         break
@@ -136,15 +134,16 @@ setup(
     long_description_content_type="text/x-rst",
     long_description=get_long_description(),
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Framework :: Django",
-        "Framework :: Django :: 4.2",
+        "Framework :: Django :: 4.0",
+        "Framework :: Django :: 5.0",
         "Environment :: Web Environment",
         "Operating System :: OS Independent",
         "Intended Audience :: Customer Service",
@@ -167,8 +166,8 @@ setup(
     ],
     author="Ross Poulton",
     author_email="ross@rossp.org",
-    maintainer="Garret Wassermann",
-    maintainer_email="gwasser@gmail.com",
+    maintainer="Christopher Broderick",
+    maintainer_email="uhurusurfa@gmail.com",
     url="https://github.com/django-helpdesk/django-helpdesk",
     license="BSD",
     packages=find_packages(),
